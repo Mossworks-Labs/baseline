@@ -1,0 +1,19 @@
+{{- if .Values.certificate.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "baseline.fullname" . }}-tls
+  labels:
+    {{- include "baseline.labels" . | nindent 4 }}
+spec:
+  secretName: {{ .Values.certificate.secretName }}
+  issuerRef:
+    name: {{ .Values.clusterIssuer.name }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.domain }}
+    - "*.{{ .Values.domain }}"
+    {{- range .Values.certificate.extraDnsNames }}
+    - {{ . | quote }}
+    {{- end }}
+{{- end }}

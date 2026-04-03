@@ -1,0 +1,44 @@
+# ─── Domain ───────────────────────────────────────────────────────────────────
+domain: rudolphhome.com
+
+# ─── Cloudflare ───────────────────────────────────────────────────────────────
+cloudflare:
+  email: ""        # Cloudflare account email
+  apiToken: ""     # API token with Zone:DNS:Edit + Zone:Zone:Read
+
+# ─── ClusterIssuer ────────────────────────────────────────────────────────────
+clusterIssuer:
+  enabled: true
+  name: letsencrypt-prod
+  server: https://acme-v02.api.letsencrypt.org/directory
+
+# ─── Certificate ──────────────────────────────────────────────────────────────
+certificate:
+  enabled: true
+  secretName: baseline-tls
+  extraDnsNames:
+    - "*.local.rudolphhome.com"
+
+# ─── cert-manager (subchart) ─────────────────────────────────────────────────
+cert-manager:
+  enabled: true
+  crds:
+    enabled: true
+
+# ─── external-dns (subchart — kubernetes-sigs/external-dns) ──────────────────
+external-dns:
+  enabled: true
+  provider:
+    name: cloudflare
+  domainFilters:
+    - rudolphhome.com
+  policy: upsert-only
+  txtOwnerId: baseline
+  sources:
+    - ingress
+  env:
+    - name: CF_API_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: baseline-cloudflare
+          key: api-token
