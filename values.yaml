@@ -1,5 +1,5 @@
 # ─── Domain ───────────────────────────────────────────────────────────────────
-domain: rudolphhome.com
+domain: example.com
 
 # ─── Cloudflare ───────────────────────────────────────────────────────────────
 cloudflare:
@@ -17,7 +17,7 @@ certificate:
   enabled: true
   secretName: baseline-tls
   extraDnsNames:
-    - "*.local.rudolphhome.com"
+    - "*.local.example.com"
 
 # ─── cert-manager (subchart) ─────────────────────────────────────────────────
 cert-manager:
@@ -31,7 +31,7 @@ external-dns:
   provider:
     name: cloudflare
   domainFilters:
-    - rudolphhome.com
+    - example.com
   policy: upsert-only
   txtOwnerId: baseline
   sources:
