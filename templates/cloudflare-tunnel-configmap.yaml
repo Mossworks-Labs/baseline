@@ -1,0 +1,24 @@
+{{- if .Values.cloudflareTunnel.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "baseline.fullname" . }}-tunnel-config
+  labels:
+    {{- include "baseline.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    tunnel: {{ .Values.cloudflareTunnel.tunnelId }}
+    credentials-file: /etc/cloudflared/credentials.json
+    metrics: 0.0.0.0:2000
+    no-autoupdate: true
+    ingress:
+      {{- range .Values.cloudflareTunnel.ingress }}
+      - hostname: {{ .hostname }}
+        service: {{ .service }}
+        {{- if .originRequest }}
+        originRequest:
+          {{- toYaml .originRequest | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      - service: http_status:404
+{{- end }}

@@ -25,6 +25,15 @@ cert-manager:
   crds:
     enabled: true
 
+# ─── Cloudflare Tunnel ────────────────────────────────────────────────────────
+cloudflareTunnel:
+  enabled: false
+  tunnelId: ""
+  imageTag: "2026.3.0"
+  replicas: 1
+  credentials: {}   # tunnel credentials JSON object
+  ingress: []       # list of { hostname, service, originRequest }
+
 # ─── external-dns (subchart — kubernetes-sigs/external-dns) ──────────────────
 external-dns:
   enabled: true

@@ -1,0 +1,56 @@
+{{- if .Values.cloudflareTunnel.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "baseline.fullname" . }}-tunnel
+  labels:
+    {{- include "baseline.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tunnel
+spec:
+  replicas: {{ .Values.cloudflareTunnel.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: {{ include "baseline.fullname" . }}
+      app.kubernetes.io/component: tunnel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: {{ include "baseline.fullname" . }}
+        app.kubernetes.io/component: tunnel
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/cloudflare-tunnel-configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:{{ .Values.cloudflareTunnel.imageTag | default "latest" }}
+          args:
+            - tunnel
+            - --config
+            - /etc/cloudflared/config.yaml
+            - run
+          ports:
+            - name: metrics
+              containerPort: 2000
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: config
+              mountPath: /etc/cloudflared/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: credentials
+              mountPath: /etc/cloudflared/credentials.json
+              subPath: credentials.json
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "baseline.fullname" . }}-tunnel-config
+        - name: credentials
+          secret:
+            secretName: {{ include "baseline.fullname" . }}-tunnel-credentials
+{{- end }}
