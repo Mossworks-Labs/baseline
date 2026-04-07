@@ -11,9 +11,12 @@ data:
     credentials-file: /etc/cloudflared/credentials.json
     metrics: 0.0.0.0:2000
     no-autoupdate: true
+    {{- if .Values.cloudflareTunnel.protocol }}
+    protocol: {{ .Values.cloudflareTunnel.protocol }}
+    {{- end }}
     ingress:
       {{- range .Values.cloudflareTunnel.ingress }}
-      - hostname: {{ .hostname }}
+      - hostname: "{{ .hostname }}"
         service: {{ .service }}
         {{- if .originRequest }}
         originRequest:

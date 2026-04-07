@@ -10,6 +10,7 @@ Cluster-level infrastructure for TLS certificates and dynamic DNS, deployed as a
 | **external-dns** (kubernetes-sigs v1.20.0) | Syncs Kubernetes Ingress hostnames to Cloudflare DNS records |
 | **ClusterIssuer** | ACME issuer using DNS-01 challenge through Cloudflare |
 | **Certificate** | Wildcard cert for `example.com` + `*.example.com` + extra SANs |
+| **Cloudflare Tunnel** | Exposes cluster services to the internet without port forwarding |
 
 ## Prerequisites
 
@@ -30,32 +31,25 @@ Cluster-level infrastructure for TLS certificates and dynamic DNS, deployed as a
 
 ## Deployment
 
-### 1. Pull chart dependencies
-
-Only needed once, or after `Chart.yaml` changes:
+### Quick deploy
 
 ```bash
+bash scripts/deploy.sh
+```
+
+### Manual steps
+
+```bash
+# 1. Update subchart dependencies
 helm dependency update .
+
+# 2. Configure values-dev.yaml with your domain, Cloudflare token, and tunnel credentials
+
+# 3. Deploy
+helm upgrade --install baseline . -f values-dev.yaml
 ```
 
-### 2. Install cert-manager CRDs (first time only)
-
-cert-manager CRDs must exist before the chart can create Certificate/ClusterIssuer resources:
-
-```bash
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.17.1/cert-manager.crds.yaml
-```
-
-### 3. Deploy the chart
-
-```bash
-helm upgrade --install baseline . \
-  --set cloudflare.email="you@example.com" \
-  --set cloudflare.apiToken="<your-cf-token>" \
-  --set "cert-manager.crds.enabled=false"
-```
-
-The Cloudflare token is stored in a Kubernetes Secret (`baseline-cloudflare`) and read by both cert-manager (DNS-01 solver) and external-dns (`CF_API_TOKEN` env var).
+The chart manages cert-manager CRDs automatically (`cert-manager.crds.enabled: true`). The Cloudflare token is stored in a Kubernetes Secret (`baseline-cloudflare`) and read by both cert-manager (DNS-01 solver) and external-dns (`CF_API_TOKEN` env var).
 
 ## Verification
 
