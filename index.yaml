@@ -3,6 +3,25 @@ entries:
   baseline:
   - apiVersion: v2
     appVersion: 1.0.0
+    created: "2026-04-07T11:24:38.502952892Z"
+    dependencies:
+    - condition: cert-manager.enabled
+      name: cert-manager
+      repository: https://charts.jetstack.io
+      version: 1.17.1
+    - condition: external-dns.enabled
+      name: external-dns
+      repository: https://kubernetes-sigs.github.io/external-dns/
+      version: 1.20.0
+    description: Cluster baseline — cert-manager and external-dns (Cloudflare)
+    digest: ec2c2fa58c454d0e4ccd937b23ac6c7c6b5e8ddc5400bfe6dfe78c70e3ed2041
+    name: baseline
+    type: application
+    urls:
+    - https://vibesmiths.github.io/baseline/baseline-0.2.0.tgz
+    version: 0.2.0
+  - apiVersion: v2
+    appVersion: 1.0.0
     created: "2026-04-05T17:55:22.155833032Z"
     dependencies:
     - condition: cert-manager.enabled
@@ -20,4 +39,4 @@ entries:
     urls:
     - https://vibesmiths.github.io/baseline/baseline-0.1.0.tgz
     version: 0.1.0
-generated: "2026-04-05T17:55:22.142995037Z"
+generated: "2026-04-07T11:24:38.490750998Z"
