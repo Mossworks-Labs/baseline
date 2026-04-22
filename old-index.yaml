@@ -3,6 +3,25 @@ entries:
   baseline:
   - apiVersion: v2
     appVersion: 1.0.0
+    created: "2026-04-22T03:18:13.13561384Z"
+    dependencies:
+    - condition: cert-manager.enabled
+      name: cert-manager
+      repository: https://charts.jetstack.io
+      version: 1.17.1
+    - condition: external-dns.enabled
+      name: external-dns
+      repository: https://kubernetes-sigs.github.io/external-dns/
+      version: 1.20.0
+    description: Cluster baseline — cert-manager and external-dns (Cloudflare)
+    digest: 93cb1bb01c8114607be55ec5dc3242ec0723055091d0180a162605aeaafc9fb6
+    name: baseline
+    type: application
+    urls:
+    - https://mossworks-labs.github.io/baseline/baseline-0.3.0.tgz
+    version: 0.3.0
+  - apiVersion: v2
+    appVersion: 1.0.0
     created: "2026-04-07T11:24:38.502952892Z"
     dependencies:
     - condition: cert-manager.enabled
@@ -39,4 +58,4 @@ entries:
     urls:
     - https://mossworks-labs.github.io/baseline/baseline-0.1.0.tgz
     version: 0.1.0
-generated: "2026-04-07T11:24:38.490750998Z"
+generated: "2026-04-22T03:18:13.12062388Z"
