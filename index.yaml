@@ -18,7 +18,7 @@ entries:
     name: baseline
     type: application
     urls:
-    - https://vibesmiths.github.io/baseline/baseline-0.3.0.tgz
+    - https://mossworks-labs.github.io/baseline/baseline-0.3.0.tgz
     version: 0.3.0
   - apiVersion: v2
     appVersion: 1.0.0
@@ -37,7 +37,7 @@ entries:
     name: baseline
     type: application
     urls:
-    - https://vibesmiths.github.io/baseline/baseline-0.2.0.tgz
+    - https://mossworks-labs.github.io/baseline/baseline-0.2.0.tgz
     version: 0.2.0
   - apiVersion: v2
     appVersion: 1.0.0
@@ -56,6 +56,6 @@ entries:
     name: baseline
     type: application
     urls:
-    - https://vibesmiths.github.io/baseline/baseline-0.1.0.tgz
+    - https://mossworks-labs.github.io/baseline/baseline-0.1.0.tgz
     version: 0.1.0
 generated: "2026-04-22T03:18:13.12062388Z"
