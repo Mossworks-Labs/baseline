@@ -48,9 +48,9 @@ jobs:
           # Fetch existing index from gh-pages if it exists
           git fetch origin gh-pages:gh-pages 2>/dev/null || true
           if git show gh-pages:index.yaml > .deploy/old-index.yaml 2>/dev/null; then
-            helm repo index .deploy --url https://vibesmiths.github.io/baseline/ --merge .deploy/old-index.yaml
+            helm repo index .deploy --url https://mossworks-labs.github.io/baseline/ --merge .deploy/old-index.yaml
           else
-            helm repo index .deploy --url https://vibesmiths.github.io/baseline/
+            helm repo index .deploy --url https://mossworks-labs.github.io/baseline/
           fi
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
