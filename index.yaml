@@ -3,7 +3,7 @@ entries:
   baseline:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2026-04-22T03:31:09.179454413Z"
+    created: "2026-04-24T03:05:56.516509864Z"
     dependencies:
     - condition: cert-manager.enabled
       name: cert-manager
@@ -13,8 +13,12 @@ entries:
       name: external-dns
       repository: https://kubernetes-sigs.github.io/external-dns/
       version: 1.20.0
+    - condition: oneuptimeEnabled
+      name: oneuptime
+      repository: https://helm-chart.oneuptime.com/
+      version: 10.0.52
     description: Cluster baseline — cert-manager and external-dns (Cloudflare)
-    digest: 259735413097c04dd2d3101446338399a90e5234d3b26fa64501150df32a1541
+    digest: 2dad054b3e61e01bdd86582fae3048456a1e9d80cb2ed946deb60891bb88a81d
     name: baseline
     type: application
     urls:
@@ -58,4 +62,4 @@ entries:
     urls:
     - https://mossworks-labs.github.io/baseline/baseline-0.1.0.tgz
     version: 0.1.0
-generated: "2026-04-22T03:31:09.161752321Z"
+generated: "2026-04-24T03:05:56.484721801Z"
