@@ -34,6 +34,46 @@ cloudflareTunnel:
   credentials: {}   # tunnel credentials JSON object
   ingress: []       # list of { hostname, service, originRequest }
 
+# ─── OneUptime (subchart — observability platform) ───────────────────────────
+# When oneuptimeEnabled=true, deploys OneUptime for uptime monitoring, status
+# pages, incident management, APM, logs, and error tracking. Uses the parent
+# chart's PostgreSQL (external DB mode) to avoid naming collisions; keeps its
+# own Redis + ClickHouse. Access via status.<domain> subdomain through nginx-ingress.
+# Note: condition key is "oneuptimeEnabled" (top-level) because OneUptime's
+# JSON schema rejects unknown properties like "enabled" under the oneuptime key.
+oneuptimeEnabled: false
+
+oneuptime:
+  otel:
+    token: ""     # Shared telemetry ingestion token (UUID). Seeded into OneUptime DB on deploy.
+    agentKey: ""  # Infrastructure agent secret key (UUID). Seeded as a Server monitor.
+  host: status.example.com
+  httpProtocol: https
+  # Disable built-in TLS — baseline cert-manager handles this
+  ssl:
+    provision: false
+  # Disable KEDA (not needed for single-node k3s)
+  keda:
+    enabled: false
+  # Disable test server
+  testServer:
+    enabled: false
+  # Use parent chart's PostgreSQL (avoids naming collision)
+  postgresql:
+    enabled: false
+  externalPostgres:
+    host: ""           # Set to parent's PostgreSQL service (e.g. craft-postgresql)
+    port: 5432
+    username: craft
+    password: craft    # Override in values-dev.yaml
+    database: oneuptime
+    ssl:
+      enabled: false
+  # Override nginx to ClusterIP — nginx-ingress handles external routing
+  nginx:
+    service:
+      type: ClusterIP
+
 # ─── external-dns (subchart — kubernetes-sigs/external-dns) ──────────────────
 external-dns:
   enabled: true

@@ -1,0 +1,86 @@
+{{- if .Values.oneuptimeEnabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "baseline.fullname" . }}-oneuptime-db-init
+  labels:
+    {{- include "baseline.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: init
+          image: postgres:17-alpine
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER"; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
+
+              # Create database if it doesn't exist
+              psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -tc \
+                "SELECT 1 FROM pg_database WHERE datname = '{{ .Values.oneuptime.externalPostgres.database }}'" \
+                | grep -q 1 \
+                || psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -c \
+                "CREATE DATABASE {{ .Values.oneuptime.externalPostgres.database }}"
+              echo "Database '{{ .Values.oneuptime.externalPostgres.database }}' ready"
+
+              {{- if .Values.oneuptime.otel.token }}
+              # Seed a TelemetryIngestionKey so OTEL data is accepted with this token.
+              # OneUptime validates x-oneuptime-token against TelemetryIngestionKey.secretKey.
+              echo "Seeding telemetry ingestion key..."
+              OTEL_DB="{{ .Values.oneuptime.externalPostgres.database }}"
+              TOKEN="{{ .Values.oneuptime.otel.token }}"
+
+              # Get the project ID (first project)
+              PROJECT_ID=$(psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$OTEL_DB" -tAc \
+                "SELECT _id FROM \"Project\" LIMIT 1" 2>/dev/null)
+
+              if [ -n "$PROJECT_ID" ]; then
+                # Only insert if this token doesn't already exist (avoids duplicates)
+                EXISTS=$(psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$OTEL_DB" -tAc \
+                  "SELECT 1 FROM \"TelemetryIngestionKey\" WHERE \"secretKey\" = '$TOKEN'" 2>/dev/null)
+                if [ -z "$EXISTS" ]; then
+                  psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$OTEL_DB" -c \
+                    "INSERT INTO \"TelemetryIngestionKey\" (_id, version, \"projectId\", name, \"secretKey\")
+                     VALUES (uuid_generate_v4(), 1, '$PROJECT_ID', 'craft-helm-seed', '$TOKEN')" 2>/dev/null || true
+                fi
+                echo "Telemetry ingestion key seeded"
+              {{- if .Values.oneuptime.otel.agentKey }}
+                # Seed a Kubernetes monitor with a known secret key for the infra agent
+                AGENT_KEY="{{ .Values.oneuptime.otel.agentKey }}"
+                OPERATIONAL_ID=$(psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$OTEL_DB" -tAc \
+                  "SELECT _id FROM \"MonitorStatus\" WHERE name = 'Operational' AND \"projectId\" = '$PROJECT_ID' LIMIT 1" 2>/dev/null)
+                if [ -n "$OPERATIONAL_ID" ]; then
+                  psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$OTEL_DB" -c \
+                    "INSERT INTO \"Monitor\" (_id, version, \"projectId\", name, slug, \"monitorType\", \"currentMonitorStatusId\", \"serverMonitorSecretKey\")
+                     VALUES (uuid_generate_v4(), 1, '$PROJECT_ID', 'k3s-cluster', 'k3s-cluster', 'Server', '$OPERATIONAL_ID', '$AGENT_KEY')
+                     ON CONFLICT DO NOTHING" 2>/dev/null || true
+                  echo "Kubernetes monitor seeded with agent key"
+                fi
+              {{- end }}
+              else
+                echo "No OneUptime project found yet — skipping (will work after first login)"
+              fi
+              {{- end }}
+          env:
+            - name: PGHOST
+              value: {{ .Values.oneuptime.externalPostgres.host | quote }}
+            - name: PGPORT
+              value: {{ .Values.oneuptime.externalPostgres.port | quote }}
+            - name: PGUSER
+              value: {{ .Values.oneuptime.externalPostgres.username | quote }}
+            - name: PGPASSWORD
+              value: {{ .Values.oneuptime.externalPostgres.password | quote }}
+            - name: PGDATABASE
+              value: {{ .Values.oneuptime.externalPostgres.username | quote }}
+{{- end }}
