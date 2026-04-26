@@ -26,6 +26,22 @@ cert-manager:
     enabled: true
 
 # ─── Cloudflare Tunnel ────────────────────────────────────────────────────────
+# When enabled, deploys cloudflared and (via tunnel-dns-job.yaml) ensures
+# every hostname in `ingress[*]` has a proxied CNAME -> <tunnelId>.cfargotunnel.com
+# in Cloudflare DNS. Don't pre-create those records manually — the post-install
+# Job upserts them on every helm run.
+#
+# Ingresses on those hostnames must also tell external-dns to keep its hands
+# off, otherwise external-dns races the Job and writes an A record to the
+# cluster's internal IP (unreachable externally). Use the helper:
+#
+#   metadata:
+#     annotations:
+#       {{- include "baseline.tunnelIngressAnnotations" . | nindent 4 }}
+#
+# or just hard-code:
+#
+#   external-dns.alpha.kubernetes.io/exclude: "true"
 cloudflareTunnel:
   enabled: false
   tunnelId: ""

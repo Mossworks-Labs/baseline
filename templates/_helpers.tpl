@@ -23,3 +23,23 @@ helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/part-of: {{ include "baseline.fullname" . }}
 {{- end }}
+
+{{/*
+Annotation block to drop on any ingress whose hostname is routed via the
+Cloudflare tunnel (i.e. listed in cloudflareTunnel.ingress). Without it,
+external-dns sees the ingress's loadBalancer ClusterIP and writes an A
+record to the unreachable internal address — overriding the proxied
+CNAME the tunnel-dns Job created.
+
+Usage in a sibling chart's ingress.yaml:
+
+  metadata:
+    annotations:
+      {{- include "baseline.tunnelIngressAnnotations" . | nindent 4 }}
+
+(Or paste verbatim if the chart isn't a baseline subchart and can't
+include this helper.)
+*/}}
+{{- define "baseline.tunnelIngressAnnotations" -}}
+external-dns.alpha.kubernetes.io/exclude: "true"
+{{- end }}

@@ -1,0 +1,110 @@
+{{- /*
+  When cloudflareTunnel.enabled is on, this Job ensures every hostname in
+  cloudflareTunnel.ingress[].hostname has a *proxied CNAME* in Cloudflare
+  pointing at <tunnelId>.cfargotunnel.com — the only DNS shape that lets a
+  tunnel actually receive traffic for the hostname.
+
+  Why we have to manage this ourselves rather than rely on external-dns:
+  external-dns reads each ingress's status.loadBalancer IP and pairs it
+  with any target/CNAME annotation. When both are present it logs
+  "conflicting record type candidates; discarding CNAME record" and
+  writes an A to the cluster's internal IP — unreachable from outside,
+  so the hostname only works from on-cluster.
+
+  Pair this Job with the helper template "baseline.tunnelIngressAnnotations"
+  on consumer ingresses so external-dns skips them entirely. Otherwise
+  external-dns will keep trying to write the wrong A record on every sync
+  (this Job will overwrite back to CNAME on the next helm upgrade, but
+  there's a window in between).
+
+  Re-runs on every helm install/upgrade as a post-install/post-upgrade hook.
+  Idempotent: matching CNAMEs are left alone; mismatched records are
+  PUT-replaced (Cloudflare's PUT can change record type).
+*/ -}}
+{{- if and .Values.cloudflareTunnel.enabled .Values.cloudflareTunnel.ingress .Values.cloudflare.apiToken -}}
+{{- $hostnames := list -}}
+{{- range .Values.cloudflareTunnel.ingress -}}
+  {{- if .hostname -}}
+    {{- $hostnames = append $hostnames .hostname -}}
+  {{- end -}}
+{{- end -}}
+{{- if $hostnames -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "baseline.fullname" . }}-tunnel-dns
+  labels:
+    {{- include "baseline.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tunnel-dns
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        {{- include "baseline.labels" . | nindent 8 }}
+        app.kubernetes.io/component: tunnel-dns
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: tunnel-dns
+          image: alpine:3.20
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              apk add --quiet --no-cache curl jq
+              CF_API="https://api.cloudflare.com/client/v4"
+              ZONE=$(curl -sf -H "Authorization: Bearer $CF_API_TOKEN" \
+                "$CF_API/zones?name=$DOMAIN" | jq -er '.result[0].id // empty')
+              if [ -z "$ZONE" ]; then
+                echo "ERR: zone $DOMAIN not found (token scoped wrong?)" >&2
+                exit 1
+              fi
+              TARGET="${TUNNEL_ID}.cfargotunnel.com"
+              echo "tunnel: $TUNNEL_ID  zone: $ZONE  target: $TARGET"
+              echo "$HOSTNAMES" | tr ' ' '\n' | while read -r HOST; do
+                [ -z "$HOST" ] && continue
+                EXISTING=$(curl -sf -H "Authorization: Bearer $CF_API_TOKEN" \
+                  "$CF_API/zones/$ZONE/dns_records?name=$HOST")
+                COUNT=$(echo "$EXISTING" | jq -r '.result | length')
+                BODY=$(printf '{"type":"CNAME","name":"%s","content":"%s","proxied":true}' "$HOST" "$TARGET")
+                if [ "$COUNT" = "0" ]; then
+                  echo "create: $HOST -> CNAME $TARGET (proxied)"
+                  curl -sf -X POST -H "Authorization: Bearer $CF_API_TOKEN" \
+                    -H "Content-Type: application/json" --data "$BODY" \
+                    "$CF_API/zones/$ZONE/dns_records" | jq -r '"  ok=" + (.success|tostring)'
+                  continue
+                fi
+                ID=$(echo "$EXISTING" | jq -r '.result[0].id')
+                TYPE=$(echo "$EXISTING" | jq -r '.result[0].type')
+                CONTENT=$(echo "$EXISTING" | jq -r '.result[0].content')
+                PROXIED=$(echo "$EXISTING" | jq -r '.result[0].proxied')
+                if [ "$TYPE" = "CNAME" ] && [ "$CONTENT" = "$TARGET" ] && [ "$PROXIED" = "true" ]; then
+                  echo "ok:     $HOST already CNAME -> $TARGET (proxied)"
+                  continue
+                fi
+                echo "replace: $HOST $TYPE/$CONTENT proxied=$PROXIED -> CNAME $TARGET (proxied)"
+                curl -sf -X PUT -H "Authorization: Bearer $CF_API_TOKEN" \
+                  -H "Content-Type: application/json" --data "$BODY" \
+                  "$CF_API/zones/$ZONE/dns_records/$ID" | jq -r '"  ok=" + (.success|tostring)'
+              done
+          env:
+            - name: CF_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "baseline.fullname" . }}-cloudflare
+                  key: api-token
+            - name: DOMAIN
+              value: {{ .Values.domain | quote }}
+            - name: TUNNEL_ID
+              value: {{ .Values.cloudflareTunnel.tunnelId | quote }}
+            - name: HOSTNAMES
+              value: {{ join " " $hostnames | quote }}
+{{- end }}
+{{- end }}

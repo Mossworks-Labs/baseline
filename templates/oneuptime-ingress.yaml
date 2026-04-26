@@ -1,4 +1,17 @@
 {{- if .Values.oneuptimeEnabled }}
+{{- /*
+  When the tunnel is enabled and routes the oneuptime host, baseline owns
+  the proper CNAME via tunnel-dns-job; tell external-dns to skip this
+  ingress so it doesn't race the Job and write an A record.
+*/ -}}
+{{- $tunnelRouted := false -}}
+{{- if .Values.cloudflareTunnel.enabled -}}
+  {{- range .Values.cloudflareTunnel.ingress -}}
+    {{- if eq .hostname $.Values.oneuptime.host -}}
+      {{- $tunnelRouted = true -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -8,6 +21,9 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    {{- if $tunnelRouted }}
+    {{- include "baseline.tunnelIngressAnnotations" . | nindent 4 }}
+    {{- end }}
 spec:
   ingressClassName: nginx
   {{- if .Values.certificate.enabled }}
